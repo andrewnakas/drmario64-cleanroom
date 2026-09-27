@@ -5,3 +5,7 @@ __pycache__/
 *.v64
 *.zip
 baserom*
+__pycache__/
+*.pyc
+*.z64
+spec_local/
