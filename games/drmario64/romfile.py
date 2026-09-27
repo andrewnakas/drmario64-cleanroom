@@ -4,11 +4,14 @@
 """
 import json
 import os
+import struct
 import sys
 
 import crunch64
 import ipl3checksum
 
+TABLES = (0xF340, 0xF650)   # storyRomData .. _romDataTbl in boot_data.c (ROM offsets, 8-byte pairs)
+MAIN_END_LUI = 0x1134   # lui a2,0x5 ; addiu a2,a2,-0x680 in boot_main (ROM offset)
 SPEC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "spec")
 
 
@@ -16,11 +19,11 @@ def layout():
     return json.load(open(os.path.join(SPEC, "layout.json")))
 
 
-def build(unc, lay=None, level=None, fill=0xFF):
+def build(unc, lay=None, level=None, fill=0xFF, pad_main=0):
     """unc: uncompressed image bytes. Returns (rom bytes, report list of (segment, used, slot)).
 
-    Everything up to and including main_segment keeps its place (boot code refers to it
-    with hi/lo pairs). Every later segment is referenced only through the {start, end}
+    Everything before main_segment keeps its place; main_segment keeps its start and may grow
+    (boot code loads its end with one lui/addiu pair, patched here). Every later segment is referenced only through the {start, end}
     tables in boot_data.c (uncompressed), so later segments are packed one after another
     and those pairs are rewritten."""
     lay = lay or layout()
@@ -36,9 +39,13 @@ def build(unc, lay=None, level=None, fill=0xFF):
             report.append((s["name"], len(data), s["cend"] - s["cstart"]))
         blobs.append(data)
     out = bytearray()
-    moved = {}
+    moved, raw_moved = {}, {}
     for s, data in zip(segs, blobs):
-        if s["cstart"] <= main["cstart"]:
+        if s is main:
+            out += data + bytes(pad_main)   # may grow: its end is patched in boot_main below
+            main_end = len(out)
+            continue
+        if s["cstart"] < main["cstart"]:
             slot = s["cend"] - s["cstart"]
             if len(data) > slot:
                 raise ValueError(f"fixed segment {s['name'] or hex(s['cstart'])} is {len(data):#x} > slot {slot:#x}")
@@ -47,18 +54,29 @@ def build(unc, lay=None, level=None, fill=0xFF):
         start = len(out)
         out += data
         moved[(s["cstart"], s["cend"])] = (start, start + len(data))
+        raw_moved[(s["cstart"], s["cend"])] = not s["compressed"]
     size = max(lay["crom_len"], (len(out) + 0xFFFFF) & ~0xFFFFF)
     out += bytes([fill]) * (size - len(out))
+    # boot_data.c tables: arrays of {start, end}. Whole compressed segments match exactly; the
+    # uncompressed audio/data region holds several blobs (wave table, ptr table, fxbank, songs)
+    # whose pairs point inside it, so those are shifted with their region.
     patched = 0
     fixed = bytes(out[:main["cstart"]])
-    for (a, b), (na, nb) in moved.items():
-        pat = a.to_bytes(4, "big") + b.to_bytes(4, "big")
-        pos = fixed.find(pat)
-        while pos >= 0:
-            out[pos:pos + 8] = na.to_bytes(4, "big") + nb.to_bytes(4, "big")
-            patched += 1
-            pos = fixed.find(pat, pos + 4)
+    lo_t, hi_t = TABLES
+    for o in range(lo_t, hi_t, 8):
+        a, b = struct.unpack(">II", fixed[o:o + 8])
+        for (sa, sb), (na, nb) in moved.items():
+            seg_raw = raw_moved.get((sa, sb))
+            if (a, b) == (sa, sb) or (seg_raw and sa <= a < b <= sb):
+                out[o:o + 8] = struct.pack(">II", a - sa + na, b - sa + na)
+                patched += 1
+                break
     report.append(("pairs patched", patched, len(moved)))
+    # boot_main.c: SEGMENT_ROM_END(main_segment) as lui/addiu a2 (retail 0x4F980)
+    assert out[MAIN_END_LUI:MAIN_END_LUI + 4] == bytes.fromhex("3c060005") and         out[MAIN_END_LUI + 4:MAIN_END_LUI + 8] == bytes.fromhex("24c6f980"), "boot_main layout changed"
+    hi, lo = (main_end + 0x8000) >> 16, main_end & 0xFFFF
+    out[MAIN_END_LUI + 2:MAIN_END_LUI + 4] = hi.to_bytes(2, "big")
+    out[MAIN_END_LUI + 6:MAIN_END_LUI + 8] = lo.to_bytes(2, "big")
     return fix_crc(out), report
 
 

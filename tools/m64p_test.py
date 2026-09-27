@@ -36,9 +36,9 @@ def main(argv):
         env["M64P_SCRIPT"] = os.path.abspath(script)
         extra = ["--input", "mupen64plus-input-script.dll"]
     r = subprocess.run([os.path.join(M64P, "mupen64plus-ui-console.exe"), "--noosd", "--windowed", "--resolution", "320x240",
-                        "--nospeed", "--audio", "dummy", "--sshotdir", shots, "--testshots", frames] + extra + [
+                        "--nospeed", "--audio", "dummy"] + (["--gfx", os.environ["M64P_GFX"]] if os.environ.get("M64P_GFX") else []) + (["--emumode", os.environ["M64P_EMUMODE"]] if os.environ.get("M64P_EMUMODE") else []) + [ "--sshotdir", shots, "--testshots", frames] + extra + [
                         "--configdir", M64P, "--datadir", M64P, os.path.abspath(rom)],
-                       cwd=M64P, capture_output=True, text=True, timeout=600, env=env)
+                       cwd=M64P, capture_output=True, text=True, timeout=int(os.environ.get("M64P_TIMEOUT", "240")), env=env)
     os.makedirs(out, exist_ok=True)
     fl = frames.split(",")
     got = sorted(glob.glob(os.path.join(shots, "*.png")))

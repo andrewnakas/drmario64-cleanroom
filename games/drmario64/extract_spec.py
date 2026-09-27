@@ -187,8 +187,13 @@ def main(argv):
     for p in pals.values():
         rom[p["off"]:p["off"] + p["size"]] = bytes(p["size"])
         zeroed += p["size"]
-    wave = [i for i in items if i["name"] == "n64_wave_tables" or i.get("type") == "databin" and i["name"] == "n64_wave_tables"]
-    json.dump(dict(segments=segs, rom_len=len(rom), crom_len=len(crom)), open(os.path.join(spec, "layout.json"), "w"), indent=0)
+    from games.drmario64 import audio
+    ptr = next(i["start"] for i in items if i["name"] == "n64_ptr_tables_v2")
+    wave = next(i["start"] for i in items if i["name"] == "n64_wave_tables")
+    nsmp, zs = audio.extract(rom, ptr, wave, spec)
+    print(f"samples {nsmp}, zeroed {zs // 1024} KB of wave table")
+    json.dump(dict(segments=segs, rom_len=len(rom), crom_len=len(crom), ptr_tables=ptr, wave_tables=wave),
+              open(os.path.join(spec, "layout.json"), "w"), indent=0)
     json.dump(texs, open(os.path.join(spec, "textures.json"), "w"))
     json.dump(pals, open(os.path.join(spec, "palettes.json"), "w"), indent=0)
     with gzip.open(os.path.join(local, "skeleton.bin.gz"), "wb") as f:

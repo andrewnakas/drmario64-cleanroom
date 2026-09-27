@@ -22,6 +22,7 @@ from games.drmario64.extract_spec import FMT
 HERE = os.path.dirname(os.path.abspath(__file__))
 SPEC = os.path.join(HERE, "spec")
 
+MAIN_END = 0x9B460   # end of main_segment in the uncompressed image
 HOOKS = []   # callables (name, d) -> rgba or None, tried in order before the default
 
 
@@ -31,10 +32,20 @@ def texture_image(name, d):
         if im is not None:
             return np.asarray(im, np.uint8)
     im = gen.from_digest(name, d)
+    if d["off"] < MAIN_END:
+        # main_segment has a fixed ROM slot: no detail noise (compresses like the original)
+        n = int(round(len(d["grid"]) ** 0.5))
+        im = gen.upsample_grid(d["grid"], n, d["w"], d["h"])
+        im[..., 3] = gen.unpack_alpha2(d["alpha2"], d["w"], d["h"]) if "alpha2" in d else 255
+        im = np.clip(im, 0, 255).astype(np.uint8)
     if d["disp"] in ("i4", "i8"):
         # intensity textures: the shape is the kept 2-bit outline, softened by the grid level
         a = gen.unpack_alpha2(d["alpha2"], d["w"], d["h"]) if "alpha2" in d else np.full((d["h"], d["w"]), 255.0)
-        im = np.repeat(a[..., None], 4, -1).astype(np.uint8)
+        # our own rendering of the outline: softened edge, slightly varied interior level
+        p = np.pad(a, 1, mode="edge")
+        blur = sum(p[y:y + a.shape[0], x:x + a.shape[1]] for y in range(3) for x in range(3)) / 9.0
+        a = (0.55 * a + 0.45 * blur) * (0.9 + 0.06 * gen.detail(gen.h32("ilev", name), d["w"], d["h"], 1.0, 3.0))
+        im = np.repeat(np.clip(a, 0, 255)[..., None], 4, -1).astype(np.uint8)
     return im
 
 
@@ -132,6 +143,25 @@ def main(argv):
     skel = gzip.open(os.path.join(local, "skeleton.bin.gz")).read()
     from games.drmario64 import hooks  # noqa: F401  (registers drawn assets)
     img = build_image(skel, only)
+    if "--no-audio" not in argv:
+        from games.drmario64 import audio
+        import hashlib
+        lay = romfile.layout()
+        segs = {s["cstart"]: s for s in lay["segments"]}
+        ranges = [(s["ustart"], s["ulen"]) for s in lay["segments"]
+                  if s["ustart"] <= lay["ptr_tables"] < s["ustart"] + s["ulen"] or s["ustart"] <= lay["wave_tables"] < s["ustart"] + s["ulen"]]
+        key = hashlib.sha1(open(os.path.join(SPEC, "samples.json"), "rb").read() + open(audio.__file__, "rb").read()).hexdigest()[:16]
+        cache = os.path.join(out, f"audio_{key}.bin")
+        if os.path.exists(cache):
+            blob = open(cache, "rb").read()
+            pos = 0
+            for a, n in ranges:
+                img[a:a + n] = blob[pos:pos + n]
+                pos += n
+            print("samples: cached")
+        else:
+            print(f"samples {audio.write(img, lay['ptr_tables'], lay['wave_tables'])}")
+            open(cache, "wb").write(b"".join(bytes(img[a:a + n]) for a, n in ranges))
     with gzip.open(os.path.join(out, "clean_uncompressed.bin.gz"), "wb") as f:
         f.write(img)
     rom, rep = romfile.build(img, level=9)

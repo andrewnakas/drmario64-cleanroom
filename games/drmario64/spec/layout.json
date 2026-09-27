@@ -606,5 +606,7 @@
 }
 ],
 "rom_len": 7446992,
-"crom_len": 4194304
+"crom_len": 4194304,
+"ptr_tables": 1791680,
+"wave_tables": 636000
 }
