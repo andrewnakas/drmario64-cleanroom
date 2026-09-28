@@ -1,10 +1,15 @@
 # Dr. Mario 64 clean room: status
 
 ## For the morning
-- **Published 2026-09-27 ~02:45:** https://andrewnakas.github.io/drmario64-cleanroom/ (repo https://github.com/andrewnakas/drmario64-cleanroom). Boots, title, menus, name entry, level select, 1P game (native mupen64plus and headless Edge). Taint: 0 failing.
-- The boot hang was my ROM assembler writing `end = start + retail size` for moved segments (so segments overlapped), plus the game's inflate rejecting some deflate streams. Both are fixed: every stream is now verified with the game's own inflate (`tools/gzcheck`).
-- Please try the page with a controller. Known ugly: menu labels baked into textures (NEW, LOW/MED/HI, CELL/CUBE, titles) are colour blobs (being re-typeset now); character sprites are blobs with the right silhouette.
-- Earlier emulator runs failed at random while the machine was out of memory and C: was full; they are flaky under load.
+- **Live:** https://andrewnakas.github.io/drmario64-cleanroom/ (repo https://github.com/andrewnakas/drmario64-cleanroom). Boots, title, menus, name entry, level select, 1P game (native mupen64plus + headless Edge). Taint: 0 failing; every compressed segment verified with the game's own inflate.
+- **Readable now:** drawn fonts (ASCII, kana/kanji, debug), 396 re-typeset labels baked into menu/HUD textures (words transcribed from the screen, boxes/colours as coarse facts, Lilita One font), word selectors (EASY/NORMAL/HARD, LOW/MED/HI, 1P..COM3) drawn with matching alpha masks.
+- **Faces:** the character select grid, icon strip and Metal/Vampire portraits are our own drawings (`portraits.py` briefs, 17 characters). In-game character sprites (about 650 animation frames) are cel-shaded silhouettes: the kept outline, colour grid, our shading and outline. No per-frame faces yet.
+- **Please check with a controller:** gameplay feel, whether any menu text is still unreadable (tell me which screen), and audio in the browser (instruments are resynthesised from coarse outlines, so expect "chiptune-ish").
+- Bugs fixed today:
+  - The ROM assembler wrote moved segments' ends wrong, which gave overlapping segments and "random" hangs.
+  - The game's inflate rejects some deflate streams, so each segment is now verified with `tools/gzcheck`.
+  - `generate.py` run as `-m` registered its hooks on a second module copy, so the fonts and labels hadn't been in the ROM before 2026-09-28 00:10.
+- The emulator ran flaky under memory pressure (C: full, low RAM); rerun a failing check before trusting it.
 
 ## Pipeline (commands)
 - Dirty: `python -m games.drmario64.extract_spec D:/n64work/drmario64/dirty games/drmario64/spec D:/n64work/drmario64/spec_local`
