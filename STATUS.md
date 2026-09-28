@@ -1,15 +1,26 @@
 # Dr. Mario 64 clean room: status
 
 ## For the morning
-- **Live:** https://andrewnakas.github.io/drmario64-cleanroom/ (repo https://github.com/andrewnakas/drmario64-cleanroom). Boots, title, menus, name entry, level select, 1P game (native mupen64plus + headless Edge). Taint: 0 failing; every compressed segment verified with the game's own inflate.
-- **Readable now:** drawn fonts (ASCII, kana/kanji, debug), 396 re-typeset labels baked into menu/HUD textures (words transcribed from the screen, boxes/colours as coarse facts, Lilita One font), word selectors (EASY/NORMAL/HARD, LOW/MED/HI, 1P..COM3) drawn with matching alpha masks.
-- **Faces:** the character select grid, icon strip and Metal/Vampire portraits are our own drawings (`portraits.py` briefs, 17 characters). In-game character sprites (about 650 animation frames) are cel-shaded silhouettes: the kept outline, colour grid, our shading and outline. No per-frame faces yet.
-- **Please check with a controller:** gameplay feel, whether any menu text is still unreadable (tell me which screen), and audio in the browser (instruments are resynthesised from coarse outlines, so expect "chiptune-ish").
-- Bugs fixed today:
-  - The ROM assembler wrote moved segments' ends wrong, which gave overlapping segments and "random" hangs.
-  - The game's inflate rejects some deflate streams, so each segment is now verified with `tools/gzcheck`.
-  - `generate.py` run as `-m` registered its hooks on a second module copy, so the fonts and labels hadn't been in the ROM before 2026-09-28 00:10.
-- The emulator ran flaky under memory pressure (C: full, low RAM); rerun a failing check before trusting it.
+- **Live:** https://andrewnakas.github.io/drmario64-cleanroom/ (repo https://github.com/andrewnakas/drmario64-cleanroom).
+  - Verified in headless Edge: title, mode select, name entry, level select and a 1P game with capsules and viruses. mupen64plus shows the same.
+  - Taint: 0 failing. Every compressed segment is verified with the game's own inflate.
+- **Readable:**
+  - Drawn fonts: ASCII, kana/kanji, debug.
+  - About 350 re-typeset menu/HUD labels. The words are transcribed, the boxes and colours are coarse facts, and the font is Lilita One.
+  - Mask-paired word stacks: EASY/NORMAL/HARD, LOW/MED/HI, 1P..COM3, digits, DEMO PLAY, REPLAY, PRESS ANY BUTTON.
+- **Faces and pictures:**
+  - Character select grid, icon strip and Metal/Vampire portraits are our own drawings (`portraits.py`, 17 characters).
+  - Bottle tiles (capsule halves, pills, 3 virus designs, pops) are our own index art with matching red/yellow/blue TLUTs.
+  - Character animation sprites (about 650 frames) are cel-shaded silhouettes (kept outline plus colour grid). They have no faces yet.
+  - Story backgrounds are soft painted versions of the 16x16 colour grid.
+- **Voices:** 10 Mario lines (Yes!, Ha ha!, Okay!, Oof!, Here we go!, Woo-hoo!, Oh!) are Piper placeholders.
+  - To record: `D:/n64work/drmario64/practice/` has SCRIPT.txt, the clips and a call-and-response track. Record 2-3 takes each and tell me where the WAVs are.
+- **Please check with a controller:** gameplay feel, any screen with unreadable text (tell me which), and audio in a real browser. The instruments are resynthesised from coarse outlines, so expect a synth sound.
+- **Known gaps:**
+  - Sprite faces.
+  - The title logo is only the kept outline with a gold grid fill.
+  - The mode-preview thumbnails on the Select a Mode screen are blurry.
+  - Code bytes come from the matching decomp build (KMC GCC is Linux-only here).
 
 ## Pipeline (commands)
 - Dirty: `python -m games.drmario64.extract_spec D:/n64work/drmario64/dirty games/drmario64/spec D:/n64work/drmario64/spec_local`
