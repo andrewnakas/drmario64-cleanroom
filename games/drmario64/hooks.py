@@ -3,7 +3,7 @@ import functools
 import os
 
 from games.drmario64 import fonts
-from games.drmario64 import labels, portraits, stacks
+from games.drmario64 import labels, portraits, stacks, tiles
 from games.drmario64.generate import HOOKS, POST_HOOKS
 
 # the decomp source (code facts: font tables, text); pristine tree, no ROM data
@@ -36,6 +36,7 @@ def font_hook(name, d):
 
 HOOKS.append(font_hook)
 HOOKS.append(stacks.render)
+HOOKS.append(lambda name, d: tiles.tlut_image(name) if name in tiles.TLUTS else None)
 
 
 POST_HOOKS.append(lambda name, d, im: None if name in stacks.BY_NAME or name in portraits.LAYOUTS else labels.render(name, im))

@@ -137,7 +137,16 @@ def build_image(skeleton, only=None, log=print):
     texs = json.load(open(os.path.join(SPEC, "textures.json")))
     pals = json.load(open(os.path.join(SPEC, "palettes.json")))
     img = bytearray(skeleton)
-    images = {n: texture_image(n, d) for n, d in texs.items() if not only or only.search(n)}
+    from games.drmario64 import tiles
+    for n in tiles.STRIPS:                      # palette-swapped tile strips: our indices + our palette
+        d = texs[n]
+        idx = np.zeros((d["h"], d["w"], 4), np.uint8)
+        idx[..., 0] = tiles.strip(n, d["w"], d["h"])
+        img[d["off"]:d["off"] + d["bytes"]] = tf.encode(idx, tf.CI, FMT[d["fmt"]][1])
+        p = pals[d["pal"]]
+        words = rgb5551(tiles.strip_palette(n)).astype(">u2").tobytes()
+        img[p["off"]:p["off"] + p["size"]] = (words * (p["size"] // len(words) + 1))[:p["size"]]
+    images = {n: texture_image(n, d) for n, d in texs.items() if (not only or only.search(n)) and n not in tiles.STRIPS}
     groups = {}
     for n in images:
         if "pal" in texs[n]:
