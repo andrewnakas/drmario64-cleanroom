@@ -9,3 +9,4 @@ __pycache__/
 *.pyc
 *.z64
 spec_local/
+start.cmd
