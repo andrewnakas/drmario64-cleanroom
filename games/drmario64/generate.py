@@ -48,6 +48,8 @@ def _texture_image(name, d):
         im = gen.upsample_grid(d["grid"], n, d["w"], d["h"])
         im[..., 3] = gen.unpack_alpha2(d["alpha2"], d["w"], d["h"]) if "alpha2" in d else 255
         im = np.clip(im, 0, 255).astype(np.uint8)
+    if "alpha2" in d and d["disp"].startswith("ci") and d["w"] * d["h"] <= 64 * 64 * 2:
+        im = cel(name, d, im)
     if d["disp"] in ("i4", "i8"):
         # intensity textures: the shape is the kept 2-bit outline, softened by the grid level
         a = gen.unpack_alpha2(d["alpha2"], d["w"], d["h"]) if "alpha2" in d else np.full((d["h"], d["w"]), 255.0)
@@ -57,6 +59,25 @@ def _texture_image(name, d):
         a = (0.55 * a + 0.45 * blur) * (0.9 + 0.06 * gen.detail(gen.h32("ilev", name), d["w"], d["h"], 1.0, 3.0))
         im = np.repeat(np.clip(a, 0, 255)[..., None], 4, -1).astype(np.uint8)
     return im
+
+
+def cel(name, d, im):
+    """Cut-out sprites: our own cel look over the kept silhouette. Colour grid fill, a soft
+    lighting ramp from the top-left, a darker rim and a 1 px dark outline inside the edge."""
+    from scipy import ndimage
+    a = im[..., 3] >= 128
+    if a.mean() < 0.02:
+        return im
+    out = im.astype(np.float32)
+    dist = ndimage.distance_transform_edt(a)
+    h, w = a.shape
+    yy, xx = np.mgrid[0:h, 0:w] / max(h, w)
+    light = 1.08 - 0.25 * (yy + xx) / 2
+    rim = np.clip(dist / 3.0, 0, 1) * 0.25 + 0.75
+    out[..., :3] *= (light * rim)[..., None]
+    edge = a & (dist <= 1.0)
+    out[edge, :3] = out[edge, :3] * 0.3
+    return np.clip(out, 0, 255).astype(np.uint8)
 
 
 def rgb5551(p):

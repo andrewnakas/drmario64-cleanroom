@@ -20,7 +20,26 @@ import numpy as np
 import yaml
 
 from cleanroom.gfx import texfmt as tf
-from cleanroom.decomp.spec import grid, alpha2
+from cleanroom.decomp.spec import grid as _grid, alpha2
+
+
+def grid(rgba, n):
+    """Colour grid of the visible pixels only (transparent texels often hold a key colour)."""
+    a = (rgba[..., 3:4].astype(np.float32) >= 128)
+    if a.all() or not a.any():
+        return _grid(rgba, n)
+    pre = rgba.astype(np.float32).copy()
+    pre[..., :3] *= a
+    g_rgb = np.asarray(_grid(pre.astype(np.float32), n), np.float32)
+    cov = np.asarray(_grid(np.repeat(a.astype(np.float32) * 255, 4, -1), n), np.float32)[:, :1] / 255
+    full = np.asarray(_grid(rgba, n), np.float32)
+    out = full.copy()
+    ok = cov[:, 0] > 0.02
+    out[ok, :3] = g_rgb[ok, :3] / cov[ok]
+    # empty cells: borrow the mean visible colour so interpolation does not bleed the key colour in
+    vis = rgba[a[..., 0]][:, :3].mean(0)
+    out[~ok, :3] = vis
+    return [[int(round(v)) for v in c] for c in out]
 
 FMT = {"ci4": (tf.CI, tf.B4), "ci8": (tf.CI, tf.B8), "i4": (tf.I, tf.B4), "i8": (tf.I, tf.B8),
        "ia4": (tf.IA, tf.B4), "ia8": (tf.IA, tf.B8), "ia16": (tf.IA, tf.B16),
