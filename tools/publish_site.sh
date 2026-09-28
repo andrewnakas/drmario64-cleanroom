@@ -5,7 +5,7 @@ W=${W:-D:/n64work/drmario64}
 cd "$(dirname "$0")/.."
 python ports/ejs/make_site.py $W/build/drmario64.clean.z64 $W/emu/ejs $W/site
 python ports/ejs/patch_core.py $W/site/drmario64.z64 $W/site/data/cores $W/site/data/cores
-cd $W/site
+cd $W/site && rm -rf .git
 git init -q -b gh-pages 2>/dev/null || true
 git remote get-url origin >/dev/null 2>&1 || git remote add origin https://github.com/andrewnakas/drmario64-cleanroom.git
 git add -A
