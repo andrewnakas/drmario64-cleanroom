@@ -151,6 +151,10 @@ def build_image(skeleton, only=None, log=print):
 
 
 def main(argv):
+    if __name__ == "__main__":
+        # hooks.py registers into games.drmario64.generate; run there, not in this __main__ copy
+        from games.drmario64 import generate
+        return generate.main(argv)
     local, out = argv[1], argv[2]
     only = re.compile(argv[argv.index("--only") + 1]) if "--only" in argv else None
     os.makedirs(out, exist_ok=True)
