@@ -1,12 +1,10 @@
 # Dr. Mario 64 clean room: status
 
 ## For the morning
-- **Not published yet.** The first clean ROM (default fonts, retail audio) booted to the title natively and in the browser. The current clean ROM (drawn fonts + resynthesised audio + relocated segments) hangs or crashes before the first frame, natively (mupen64plus) and in EmulatorJS.
-  - Ruled out: the ROM relocation (retail content shifted by 0x21e0 boots), the game's inflater (gzcheck, built from the decomp's own inflate.c, decodes every stream), the checksum, and single-byte changes.
-  - Fixed on the way: boot_data's `_romDataTbl` holds pairs *inside* the uncompressed audio/data region, which are now shifted too (94 pairs).
-  - Open: retail main_segment + retail audio + clean textures + shifted layout fails, while clean textures without a shift boot. Partial bisect before the system stopped it: clean **title_all/title_bmp** textures hang; clean anime textures boot. menu/game/story are untested. Next: split title_all's textures (the LWS title scene) to find the one the code depends on (probably a texture the CPU reads, or one whose size or format the spec misreads).
-- **Stopped by the system (low memory), not restarted:** the local web server (port 8631) and the background bisect run (`devR_title/anime/menu/game/story`). Rerun the bisect when memory allows: `for g in title anime menu game story; do python tools/m64p_test.py D:/n64work/drmario64/build/devR_$g.z64 D:/n64work/drmario64/shots/devR_$g --frames 300; done`
-- **C: is full (0 bytes free)**; set TEMP/TMP to D:/n64work/drmario64/tmp for this work. Other sessions' `cdprun_*` browser profiles in the Temp folder use ~0.35 GB each (54 of them); I did not delete them because they are not mine.
+- **Published 2026-09-27 ~02:45:** https://andrewnakas.github.io/drmario64-cleanroom/ (repo https://github.com/andrewnakas/drmario64-cleanroom). Boots, title, menus, name entry, level select, 1P game (native mupen64plus and headless Edge). Taint: 0 failing.
+- The boot hang was my ROM assembler writing `end = start + retail size` for moved segments (so segments overlapped), plus the game's inflate rejecting some deflate streams. Both are fixed: every stream is now verified with the game's own inflate (`tools/gzcheck`).
+- Please try the page with a controller. Known ugly: menu labels baked into textures (NEW, LOW/MED/HI, CELL/CUBE, titles) are colour blobs (being re-typeset now); character sprites are blobs with the right silhouette.
+- Earlier emulator runs failed at random while the machine was out of memory and C: was full; they are flaky under load.
 
 ## Pipeline (commands)
 - Dirty: `python -m games.drmario64.extract_spec D:/n64work/drmario64/dirty games/drmario64/spec D:/n64work/drmario64/spec_local`
