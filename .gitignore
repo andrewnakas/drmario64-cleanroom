@@ -10,3 +10,4 @@ __pycache__/
 *.z64
 spec_local/
 start.cmd
+games/drmario64/voices/_raw/

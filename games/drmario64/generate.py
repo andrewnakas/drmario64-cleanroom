@@ -198,7 +198,11 @@ def main(argv):
         segs = {s["cstart"]: s for s in lay["segments"]}
         ranges = [(s["ustart"], s["ulen"]) for s in lay["segments"]
                   if s["ustart"] <= lay["ptr_tables"] < s["ustart"] + s["ulen"] or s["ustart"] <= lay["wave_tables"] < s["ustart"] + s["ulen"]]
-        key = hashlib.sha1(open(os.path.join(SPEC, "samples.json"), "rb").read() + open(audio.__file__, "rb").read()).hexdigest()[:16]
+        from games.drmario64 import voices
+        vdir = os.path.join(HERE, "voices")
+        vbytes = b"".join(open(os.path.join(vdir, f), "rb").read() for f in sorted(os.listdir(vdir)) if f.endswith(".wav"))             if os.path.isdir(vdir) else b""
+        key = hashlib.sha1(open(os.path.join(SPEC, "samples.json"), "rb").read() + open(audio.__file__, "rb").read()
+                           + vbytes).hexdigest()[:16]
         cache = os.path.join(out, f"audio_{key}.bin")
         if os.path.exists(cache):
             blob = open(cache, "rb").read()
@@ -208,7 +212,7 @@ def main(argv):
                 pos += n
             print("samples: cached")
         else:
-            print(f"samples {audio.write(img, lay['ptr_tables'], lay['wave_tables'])}")
+            print(f"samples {audio.write(img, lay['ptr_tables'], lay['wave_tables'], hook=voices.supplied)}")
             open(cache, "wb").write(b"".join(bytes(img[a:a + n]) for a, n in ranges))
     with gzip.open(os.path.join(out, "clean_uncompressed.bin.gz"), "wb") as f:
         f.write(img)

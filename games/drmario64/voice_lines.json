@@ -1,0 +1,14 @@
+{
+ "_doc": "Voice slots (one-shot libmus waves); words heard in the game (Whisper on the dirty extraction, checked by ear-free reading). who: mario. Placeholders are Piper TTS; the user records real takes with the practice pack.",
+ "_characters": {"mario": {"tts": {"model": "en_US-ryan-high", "semitones": 5.0, "length": 0.9, "noise": 0.8, "noise_w": 0.9}}},
+ "wave137": {"who": "mario", "text": "Yes!"},
+ "wave138": {"who": "mario", "text": "Ha ha!"},
+ "wave139": {"who": "mario", "text": "Okay!"},
+ "wave140": {"who": "mario", "text": "Oof!"},
+ "wave141": {"who": "mario", "text": "Here we go!"},
+ "wave142": {"who": "mario", "text": "Yes!"},
+ "wave143": {"who": "mario", "text": "Woo-hoo!"},
+ "wave144": {"who": "mario", "text": "Woo-hoo!"},
+ "wave145": {"who": "mario", "text": "Oh!"},
+ "wave146": {"who": "mario", "text": "Here we go!"}
+}

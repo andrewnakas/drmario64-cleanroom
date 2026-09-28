@@ -32,6 +32,15 @@ STACKS = [
     ("game_ls_titexdata_05_texs_tex", "game_ls_titexdata_03_texs_tex", 16,
      [("LOW", BLUE), ("MED", YELLOW), ("HI", RED)], True),
 ]
+STACKS += [
+    ("game_al_titexdata_13_texs_tex", "game_al_titexdata_18_texs_tex", 20, [(str(i % 10), LIME) for i in range(1, 11)], False),
+    ("game_al_titexdata_14_texs_tex", "game_al_titexdata_19_texs_tex", 13, [("DEMO  PLAY", ORANGE)], False),
+    ("game_al_titexdata_15_texs_tex", "game_al_titexdata_20_texs_tex", 15, [("REPLAY", BLUE)], False),
+    ("game_al_titexdata_23_texs_tex", "game_al_titexdata_24_texs_tex", 11, [("PRESS ANY BUTTON", BLUE)], False),
+    ("game_al_titexdata_27_texs_tex", "game_al_titexdata_28_texs_tex", 13, [("PRESS ANY BUTTON", BLUE)], False),
+    ("title_bmp_01_tex", "title_bmp_02", 16, [("PRESS ANY BUTTON", RED)], False),
+]
+SHADOWS = {"title_bmp_02"}     # drawn as a dark drop shadow (ci4), not an intensity mask
 BY_NAME = {}
 for _c, _m, _rh, _rows, _ul in STACKS:
     BY_NAME[_c] = ("colour", _c, _m, _rh, _rows, _ul)
@@ -73,6 +82,11 @@ def render(name, d):
     down = lambda im: np.asarray(im, np.float32).reshape(h, SS, w, SS, -1).mean((1, 3)) if np.asarray(im).ndim == 3 \
         else np.asarray(im, np.float32).reshape(h, SS, w, SS).mean((1, 3))
     a_ink, a_out, a_bar = down(ink) / 255, down(outline) / 255, down(bar) / 255
+    if kind == "mask" and m in SHADOWS:
+        out = np.zeros((h, w, 4), np.uint8)
+        out[..., :3] = (30, 20, 20)
+        out[..., 3] = (np.maximum(a_out, a_bar) > 0.3) * 255
+        return out
     if kind == "mask":
         v = np.clip(np.maximum(a_out, a_bar), 0, 1) * 255
         return np.repeat(v[..., None], 4, -1).astype(np.uint8)

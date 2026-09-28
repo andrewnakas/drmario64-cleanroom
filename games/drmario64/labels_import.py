@@ -34,6 +34,9 @@ def main(argv):
             words[key] = text
             tex, k = key.split("#")
             keep.setdefault(tex, {})[k] = boxes[tex][int(k)]
+    from games.drmario64 import stacks          # mask-paired texts are drawn by stacks.py
+    words = {k: v for k, v in words.items() if k.split("#")[0] not in stacks.BY_NAME}
+    keep = {k: v for k, v in keep.items() if k not in stacks.BY_NAME}
     json.dump(keep, open(os.path.join(HERE, "spec", "label_boxes.json"), "w"), indent=0)
     json.dump(words, open(os.path.join(HERE, "tex_labels.json"), "w", encoding="utf-8"), indent=0, ensure_ascii=False)
     print(f"{len(words)} labels in {len(keep)} textures")
