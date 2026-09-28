@@ -3,7 +3,8 @@ import functools
 import os
 
 from games.drmario64 import fonts
-from games.drmario64.generate import HOOKS
+from games.drmario64 import labels
+from games.drmario64.generate import HOOKS, POST_HOOKS
 
 # the decomp source (code facts: font tables, text); pristine tree, no ROM data
 SRC = os.environ.get("DRM64_SRC", "D:/n64work/drmario64/pristine")
@@ -34,3 +35,6 @@ def font_hook(name, d):
 
 
 HOOKS.append(font_hook)
+
+
+POST_HOOKS.append(lambda name, d, im: labels.render(name, im))

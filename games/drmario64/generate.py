@@ -23,10 +23,20 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 SPEC = os.path.join(HERE, "spec")
 
 MAIN_END = 0x9B460   # end of main_segment in the uncompressed image
+POST_HOOKS = []   # callables (name, d, rgba) -> rgba or None, applied after HOOKS/default
 HOOKS = []   # callables (name, d) -> rgba or None, tried in order before the default
 
 
 def texture_image(name, d):
+    im = _texture_image(name, d)
+    for hook in POST_HOOKS:
+        out = hook(name, d, im)
+        if out is not None:
+            im = np.asarray(out, np.uint8)
+    return im
+
+
+def _texture_image(name, d):
     for hook in HOOKS:
         im = hook(name, d)
         if im is not None:
@@ -72,13 +82,15 @@ def kmeans(px, k, seed=1, iters=8):
     return np.clip(np.round(c), 0, 255).astype(np.uint8)
 
 
-def make_palette(images, n):
-    """n entries; entry 0 transparent if any image has alpha < 128."""
+def make_palette(images, n, reserved=()):
+    """n entries; entry 0 transparent if any image has alpha < 128; `reserved` colours kept exactly."""
     px = np.concatenate([im.reshape(-1, 4) for im in images])
     trans = (px[:, 3] < 128).any()
     opaque = px[px[:, 3] >= 128][:, :3]
     k = n - 1 if trans else n
-    cols = kmeans(opaque, k) if len(opaque) else np.zeros((1, 3), np.uint8)
+    res = np.unique(np.asarray(list(reserved), np.uint8).reshape(-1, 3), axis=0)[: k // 2]
+    cols = kmeans(opaque, k - len(res)) if len(opaque) else np.zeros((1, 3), np.uint8)
+    cols = np.concatenate([res, cols]) if len(res) else cols
     pal = np.zeros((n, 4), np.uint8)
     off = 1 if trans else 0
     pal[off:off + len(cols), :3] = cols
@@ -112,7 +124,9 @@ def build_image(skeleton, only=None, log=print):
     for pname, users in groups.items():
         p = pals[pname]
         n = 16 if all(texs[u]["disp"] == "ci4" for u in users) else 256
-        pal = make_palette([images[u] for u in users], n)
+        from games.drmario64 import labels
+        reserved = [c for u in users for c in labels.RESERVED.get(u, [])]
+        pal = make_palette([images[u] for u in users], n, reserved)
         words = rgb5551(pal).astype(">u2").tobytes()
         region = (words * (p["size"] // len(words) + 1))[:p["size"]]
         img[p["off"]:p["off"] + p["size"]] = region
